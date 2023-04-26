@@ -1145,7 +1145,7 @@ impl DeltaTable {
         // move temporary commit file to delta log directory
         // rely on storage to fail if the file already exists -
         self.storage
-            .rename_if_not_exists(&commit.uri, &commit_uri_from_version(version))
+            .write(&commit, &commit_uri_from_version(version))
             .await
             .map_err(|e| match e {
                 ObjectStoreError::AlreadyExists { .. } => {
@@ -1405,21 +1405,9 @@ impl<'a> DeltaTransaction<'a> {
             self.add_action(action::Action::commitInfo(commit_info));
         }
 
-        // Serialize all actions that are part of this log entry.
-        let log_entry = bytes::Bytes::from(
-            log_entry_from_actions(&self.actions)
-                .map_err(|e| DeltaTableError::SerializeLogJson { json_err: e })?,
-        );
-
-        // Write delta log entry as temporary file to storage. For the actual commit,
-        // the temporary file is moved (atomic rename) to the delta log folder within `commit` function.
-        let token = Uuid::new_v4().to_string();
-        let file_name = format!("_commit_{token}.json.tmp");
-        let path = Path::from_iter(["_delta_log", &file_name]);
-
-        self.delta_table.storage.put(&path, log_entry).await?;
-
-        Ok(PreparedCommit { uri: path })
+        Ok(PreparedCommit {
+            actions: self.actions.clone(),
+        })
     }
 
     async fn try_commit_loop(
@@ -1466,18 +1454,21 @@ impl<'a> DeltaTransaction<'a> {
 /// Once created, the actual commit could be executed with `DeltaTransaction.try_commit`.
 #[derive(Debug)]
 pub struct PreparedCommit {
-    uri: Path,
+    actions: Vec<Action>,
 }
 
-fn log_entry_from_actions(actions: &[Action]) -> Result<String, serde_json::Error> {
-    let mut jsons = Vec::<String>::new();
+impl PreparedCommit {
+    /// derive a string representation of the actions
+    pub fn log_entry_from_actions(&self) -> Result<String, serde_json::Error> {
+        let mut jsons = Vec::<String>::new();
 
-    for action in actions {
-        let json = serde_json::to_string(action)?;
-        jsons.push(json);
+        for action in &self.actions {
+            let json = serde_json::to_string(action)?;
+            jsons.push(json);
+        }
+
+        Ok(jsons.join("\n"))
     }
-
-    Ok(jsons.join("\n"))
 }
 
 /// Creates and loads a DeltaTable from the given path with current metadata.

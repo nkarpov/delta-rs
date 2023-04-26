@@ -5,7 +5,7 @@ pub mod file;
 pub mod utils;
 
 use self::config::{ObjectStoreKind, StorageOptions};
-use crate::{DeltaDataTypeVersion, DeltaResult};
+use crate::{DeltaDataTypeVersion, DeltaResult, PreparedCommit};
 
 use bytes::Bytes;
 use futures::{stream::BoxStream, StreamExt};
@@ -32,6 +32,7 @@ pub use object_store::{
     ObjectStore, Result as ObjectStoreResult,
 };
 pub use utils::*;
+use uuid::Uuid;
 
 lazy_static! {
     static ref DELTA_LOG_PATH: Path = Path::from("_delta_log");
@@ -194,6 +195,28 @@ impl DeltaObjectStore {
         } else {
             Ok(false)
         }
+    }
+
+    /// write a commit to the object store
+    pub async fn write(&self, commit: &PreparedCommit, to: &Path) -> ObjectStoreResult<()> {
+        // write the temporary commit file
+        // Serialize all actions that are part of this log entry.
+        let log_entry = bytes::Bytes::from(
+            // TODO: (nicK) had an issue figuring out Error handling
+            //  come back to handle this gracefully
+            commit.log_entry_from_actions().unwrap(),
+        );
+
+        // Write delta log entry as temporary file to storage. For the actual commit,
+        // the temporary file is moved (atomic rename) to the delta log folder within `commit` function.
+        let token = Uuid::new_v4().to_string();
+        let file_name = format!("_commit_{token}.json.tmp");
+        let temp_path = Path::from_iter(["_delta_log", &file_name]);
+
+        self.storage.put(&temp_path, log_entry).await?;
+
+        // rename the temporary commit file
+        self.storage.rename_if_not_exists(&temp_path, to).await
     }
 }
 
