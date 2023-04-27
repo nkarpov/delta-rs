@@ -19,7 +19,7 @@ use crate::action::{Add, Stats};
 use crate::delta_config::DeltaConfigError;
 use crate::operations::transaction::TransactionError;
 use crate::operations::vacuum::VacuumBuilder;
-use crate::storage::{commit_uri_from_version, ObjectStoreRef};
+use crate::storage::{commit_uri_from_version, ObjectStoreRef, LogStore};
 
 use chrono::{DateTime, Duration, Utc};
 use futures::StreamExt;

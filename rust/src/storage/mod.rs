@@ -7,6 +7,7 @@ pub mod utils;
 use self::config::{ObjectStoreKind, StorageOptions};
 use crate::{DeltaDataTypeVersion, DeltaResult, PreparedCommit};
 
+use async_trait::async_trait;
 use bytes::Bytes;
 use futures::{stream::BoxStream, StreamExt};
 use lazy_static::lazy_static;
@@ -196,9 +197,19 @@ impl DeltaObjectStore {
             Ok(false)
         }
     }
+}
 
-    /// write a commit to the object store
-    pub async fn write(&self, commit: &PreparedCommit, to: &Path) -> ObjectStoreResult<()> {
+/// a trait to handle Log specific things
+#[async_trait]
+pub trait LogStore {
+    /// write a commit to the DeltaLog
+    async fn write(&self, commit: &PreparedCommit, to: &Path) -> ObjectStoreResult<()>;
+}
+
+#[async_trait::async_trait]
+impl LogStore for DeltaObjectStore {
+    /// write a commit to the DeltaLog
+    async fn write(&self, commit: &PreparedCommit, to: &Path) -> ObjectStoreResult<()> {
         // write the temporary commit file
         // Serialize all actions that are part of this log entry.
         let log_entry = bytes::Bytes::from(
