@@ -207,8 +207,9 @@ impl DeltaObjectStore {
             commit.log_entry_from_actions().unwrap(),
         );
 
-        // Write delta log entry as temporary file to storage. For the actual commit,
-        // the temporary file is moved (atomic rename) to the delta log folder within `commit` function.
+        // Write delta log entry as temporary file to storage.
+        // TODO: (nick) should we continue to expose this tmp file creation here?
+        //  Maybe put it in PreparedCommit?...
         let token = Uuid::new_v4().to_string();
         let file_name = format!("_commit_{token}.json.tmp");
         let temp_path = Path::from_iter(["_delta_log", &file_name]);

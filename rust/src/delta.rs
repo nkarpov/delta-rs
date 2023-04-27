@@ -1142,7 +1142,7 @@ impl DeltaTable {
         commit: &PreparedCommit,
         version: DeltaDataTypeVersion,
     ) -> Result<DeltaDataTypeVersion, DeltaTableError> {
-        // move temporary commit file to delta log directory
+        // write commit file to delta log directory
         // rely on storage to fail if the file already exists -
         self.storage
             .write(&commit, &commit_uri_from_version(version))
