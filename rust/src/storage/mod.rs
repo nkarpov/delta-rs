@@ -3,6 +3,7 @@
 pub mod config;
 pub mod file;
 pub mod utils;
+pub mod logstore;
 
 use self::config::StorageOptions;
 use crate::{DeltaDataTypeVersion, DeltaResult};
@@ -32,6 +33,7 @@ pub use object_store::{
     ObjectStore, Result as ObjectStoreResult,
 };
 pub use utils::*;
+use crate::storage::logstore::{LogStore, LogStoreResult};
 
 lazy_static! {
     static ref DELTA_LOG_PATH: Path = Path::from("_delta_log");
@@ -194,6 +196,24 @@ impl DeltaObjectStore {
         } else {
             Ok(false)
         }
+    }
+}
+
+#[async_trait::async_trait]
+impl LogStore for DeltaObjectStore {
+    /// write
+    async fn write(&self) -> LogStoreResult<()> {
+        todo!()
+    }
+
+    /// read
+    async fn read(&self) -> LogStoreResult<()> {
+        todo!()
+    }
+
+    /// list_from
+    async fn list_from(&self) -> LogStoreResult<()> {
+        todo!()
     }
 }
 
